@@ -28,11 +28,21 @@ function closeMobileNav() {
    EXPERIENCEJAX
 ═══════════════════════════════════ */
 function filterEvents(cat) {
-  currentEventFilter = cat;
+  if (cat === 'All') {
+    activeEventFilters.clear();
+  } else if (activeEventFilters.has(cat)) {
+    activeEventFilters.delete(cat);
+  } else {
+    activeEventFilters.add(cat);
+  }
   document.querySelectorAll('.exp-filter-btn').forEach(b => b.classList.remove('active'));
-  const id = cat === 'All' ? 'exp-filter-all' : 'exp-filter-' + cat;
-  const el = document.getElementById(id);
-  if (el) el.classList.add('active');
+  if (activeEventFilters.size === 0) {
+    document.getElementById('exp-filter-all')?.classList.add('active');
+  } else {
+    activeEventFilters.forEach(c => {
+      document.getElementById('exp-filter-' + c)?.classList.add('active');
+    });
+  }
   renderEvents();
 }
 
@@ -42,10 +52,11 @@ function renderEvents() {
   if (!grid) return;
 
   let filtered = events;
-  if (currentEventFilter === 'Free') {
-    filtered = events.filter(e => e.free);
-  } else if (currentEventFilter !== 'All') {
-    filtered = events.filter(e => e.category === currentEventFilter);
+  if (activeEventFilters.size > 0) {
+    filtered = events.filter(e =>
+      (activeEventFilters.has('Free') && e.free) ||
+      e.categories.some(c => activeEventFilters.has(c))
+    );
   }
 
   countEl.textContent = filtered.length + ' event' + (filtered.length !== 1 ? 's' : '') + ' in Jacksonville';
@@ -69,7 +80,7 @@ function renderEvents() {
     }).join('');
 
     const rsvpCountText = rsvps.length === 0
-      ? 'No RSVPs yet — be first!'
+      ? 'No RSVPs yet, be first!'
       : iGoing && rsvps.length === 1
         ? 'Just you so far!'
         : `${rsvps.length} intern${rsvps.length !== 1 ? 's' : ''} going`;
@@ -80,7 +91,7 @@ function renderEvents() {
       <div class="event-card-body">
         <div>
           <span class="event-tag" style="background:${e.color}18;color:${e.color}">
-            <i class="${e.icon}" style="font-size:0.75rem"></i> ${e.category}
+            <i class="${e.icon}" style="font-size:0.75rem"></i> ${e.categories.join(' · ')}
           </span>
           ${e.free ? '<span class="event-tag" style="background:#E8F5E9;color:#2E7D32;margin-left:6px"><i class="fa-solid fa-ticket" style="font-size:0.75rem"></i> Free</span>' : ''}
           ${e.recurring ? '<span class="event-tag" style="background:#E3F2FD;color:#1565C0;margin-left:6px"><i class="fa-solid fa-rotate" style="font-size:0.75rem"></i> Recurring</span>' : ''}
@@ -149,7 +160,7 @@ function renderConnectJax() {
     return matchQ && matchCo && matchType;
   });
 
-  countEl.textContent = filtered.length + ' intern' + (filtered.length !== 1 ? 's' : '') + ' in the WorkJax network';
+  countEl.textContent = filtered.length + ' student' + (filtered.length !== 1 ? 's' : '') + ' in the WorkJax network';
 
   if (!filtered.length) {
     grid.innerHTML = `<div class="connect-empty">
@@ -228,7 +239,7 @@ function openMyLinkedInModal() {
       <button class="modal-close" onclick="closeMsgModal()"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <p style="font-size:0.87rem;color:var(--gray);margin-bottom:16px;line-height:1.5;">
-      Add your LinkedIn profile so other interns in the WorkJax network can connect with you directly.
+      Add your LinkedIn profile so other students in the WorkJax network can connect with you directly.
     </p>
     <label class="modal-label">Your LinkedIn URL</label>
     <input type="url" class="form-input" id="my-linkedin-input" placeholder="https://www.linkedin.com/in/your-name" value="${existing}" style="width:100%;margin-bottom:4px;" />
@@ -301,7 +312,7 @@ function oppCardHTML(e, compact = false) {
           </button>
         </div>
         <div class="opp-tags">
-          <span class="tag tag-industry">${e.industry}</span>
+          <span class="tag tag-industry">${e.industryLabel || e.industry}</span>
           <span class="tag tag-type">${e.type}</span>
           <span class="tag tag-grade">${e.grade === 'Both' ? 'HS + College' : e.grade}</span>
           <span class="tag ${e.paid?'tag-paid':'tag-unpaid'}">${e.paid?'Paid':'Unpaid'}</span>
@@ -357,11 +368,10 @@ function renderOpportunities() {
   };
   const anyIndustryChecked = Object.values(industryFilters).some(Boolean);
 
-  // Compensation filters (stipend folds into "paid" since data has no separate stipend flag)
+  // Compensation filters
   const paidChecked = document.getElementById('f-paid')?.checked;
   const unpaidChecked = document.getElementById('f-unpaid')?.checked;
-  const stipendChecked = document.getElementById('f-stipend')?.checked;
-  const anyCompChecked = paidChecked || unpaidChecked || stipendChecked;
+  const anyCompChecked = paidChecked || unpaidChecked;
 
   let results = employers.filter(e => {
     // search
@@ -376,7 +386,7 @@ function renderOpportunities() {
     if (anyIndustryChecked && !industryFilters[e.industry]) return false;
     // compensation
     if (anyCompChecked) {
-      const matchesPaid = (paidChecked || stipendChecked) && e.paid;
+      const matchesPaid = paidChecked && e.paid;
       const matchesUnpaid = unpaidChecked && !e.paid;
       if (!matchesPaid && !matchesUnpaid) return false;
     }
@@ -407,7 +417,7 @@ function showDetail(id) {
         </div>
       </div>
       <div class="detail-tags">
-        <span class="tag tag-industry">${e.industry}</span>
+        <span class="tag tag-industry">${e.industryLabel || e.industry}</span>
         <span class="tag tag-type">${e.type}</span>
         <span class="tag tag-grade">${e.grade === 'Both' ? 'HS + College' : e.grade}</span>
         <span class="tag ${e.paid?'tag-paid':'tag-unpaid'}">${e.paid?'Paid':'Unpaid'}</span>

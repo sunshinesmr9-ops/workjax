@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WorkJax — Northeast Florida Experiential Learning</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Urbanist:wght@700;800&amp;family=Lora:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap" />
+
+  <!-- External libraries -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+  <!-- WorkJax styles -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ── Navigation ── -->
+<nav>
+  <div class="nav-logo" onclick="showPage('home')">Work<span>Jax</span></div>
+  <div class="nav-links">
+    <button class="nav-link active" id="nav-home" onclick="showPage('home')"><i class="fa-solid fa-house" style="margin-right:5px"></i>Home</button>
+    <button class="nav-link" id="nav-opportunities" onclick="showPage('opportunities')"><i class="fa-solid fa-magnifying-glass" style="margin-right:5px"></i>Find Opportunities</button>
+    <button class="nav-link" id="nav-map" onclick="showPage('map'); initMap()"><i class="fa-solid fa-map" style="margin-right:5px"></i>Employer Map</button>
+    <button class="nav-link" id="nav-experience" onclick="showPage('experience')"><i class="fa-solid fa-calendar-star" style="margin-right:5px"></i>ExperienceJax</button>
+    <button class="nav-link" id="nav-connect" onclick="showPage('connect')"><i class="fa-solid fa-users" style="margin-right:5px"></i>ConnectJax</button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════
+     HOME PAGE
+════════════════════════════════════════ -->
+<div id="page-home" class="page active">
+
+  <section class="hero">
+    <!-- Downtown Jacksonville drone footage (Pixabay / phlyingdoctor, free license) -->
+    <div class="hero-video-bg"></div>
+    <div class="hero-video-overlay"></div>
+    <div class="hero-content-wrap">
+      <div class="hero-badge"><i class="fa-solid fa-map-pin hero-badge-icon"></i> Northeast Florida's Experiential Learning Hub</div>
+      <h1>Discover Real Work.<br/>Build Your Future in <em style="color: #64D9C4">Jacksonville.</em></h1>
+      <p>Dozens of opportunities. Connect with top employers across Northeast Florida and launch your career right here at home.</p>
+      <div class="hero-search">
+        <div class="hero-search-box">
+          <input type="text" placeholder="Search internships, industries, employers…" id="hero-search-input" autocomplete="off" oninput="showSuggestions('hero')" onfocus="showSuggestions('hero')" onkeydown="searchKeydown(event,'hero')" />
+          <button onclick="searchAndGo()">Search</button>
+        </div>
+        <div class="search-suggest" id="hero-suggest"></div>
+      </div>
+      <div class="hero-tags">
+        <span class="hero-tag" onclick="filterAndGo('Healthcare')"><i class="fa-solid fa-hospital"></i> Healthcare</span>
+        <span class="hero-tag" onclick="filterAndGo('Technology')"><i class="fa-solid fa-microchip"></i> Technology</span>
+        <span class="hero-tag" onclick="filterAndGo('Finance')"><i class="fa-solid fa-chart-line"></i> Finance</span>
+        <span class="hero-tag" onclick="filterAndGo('Government')"><i class="fa-solid fa-landmark"></i> Government</span>
+        <span class="hero-tag" onclick="filterAndGo('Engineering')"><i class="fa-solid fa-gear"></i> Engineering</span>
+        <span class="hero-tag" onclick="filterAndGo('Nonprofit')"><i class="fa-solid fa-hand-holding-heart"></i> Nonprofit</span>
+      </div>
+    </div><!-- /hero-content-wrap -->
+  </section>
+
+  <div class="stats-bar">
+    <div class="stat"><div class="stat-num">80+</div><div class="stat-label">Employer Partners</div></div>
+    <div class="stat"><div class="stat-num">200+</div><div class="stat-label">Open Opportunities</div></div>
+    <div class="stat"><div class="stat-num">12</div><div class="stat-label">Industries</div></div>
+    <div class="stat"><div class="stat-num">NEF</div><div class="stat-label">Region-wide</div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-label" style="font-size: 14px">What WorkJax Offers</div>
+    <div class="section-title">Everything You Need, in One Place.</div>
+    <div class="section-sub">WorkJax is your all-in-one hub for launching your career, building your network, and making the most of your time in Northeast Florida.</div>
+    <div class="how-grid">
+      <div class="how-card">
+        <div class="how-num">1</div>
+        <div class="how-icon"><i class="fa-solid fa-magnifying-glass" style="color:var(--teal)"></i></div>
+        <h3>Find Internships</h3>
+        <p>Browse hundreds of opportunities from top Jacksonville employers across every industry — filter by field, schedule, and student level to find the right fit.</p>
+      </div>
+      <div class="how-card">
+        <div class="how-num">2</div>
+        <div class="how-icon"><i class="fa-solid fa-users" style="color:var(--teal)"></i></div>
+        <h3>Connect with Fellow Interns</h3>
+        <p>Meet other students interning across Northeast Florida. Build your network, share experiences, and grow alongside the next generation of Jacksonville professionals.</p>
+      </div>
+      <div class="how-card">
+        <div class="how-num">3</div>
+        <div class="how-icon"><i class="fa-solid fa-map-pin" style="color:var(--teal)"></i></div>
+        <h3>Discover Jacksonville</h3>
+        <p>Your internship is just the beginning. Explore what the River City has to offer — from waterfront events and live music to food markets and free cultural experiences.</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="background: var(--white); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 24px 0;">
+    <div class="section" style="padding-top: 0; padding-bottom: 0;">
+      <div class="section-label">Explore by Industry</div>
+      <div class="section-title">Find Your Path</div>
+      <div class="cat-grid">
+        <div class="cat-card" onclick="filterAndGo('Healthcare')">
+          <div class="cat-icon"><i class="fa-solid fa-hospital" style="color: #00696F"></i></div>
+          <h4>Healthcare</h4><span>34 opportunities</span>
+        </div>
+        <div class="cat-card" onclick="filterAndGo('Technology')">
+          <div class="cat-icon"><i class="fa-solid fa-microchip" style="color: #00696F"></i></div>
+          <h4>Technology</h4><span>28 opportunities</span>
+        </div>
+        <div class="cat-card" onclick="filterAndGo('Finance')">
+          <div class="cat-icon"><i class="fa-solid fa-chart-line" style="color: #00696F"></i></div>
+          <h4>Finance & Banking</h4><span>22 opportunities</span>
+        </div>
+        <div class="cat-card" onclick="filterAndGo('Government')">
+          <div class="cat-icon"><i class="fa-solid fa-landmark" style="color: #00696F"></i></div>
+          <h4>Civic & Government</h4><span>18 opportunities</span>
+        </div>
+        <div class="cat-card" onclick="filterAndGo('Engineering')">
+          <div class="cat-icon"><i class="fa-solid fa-gear" style="color: #00696F"></i></div>
+          <h4>Engineering</h4><span>25 opportunities</span>
+        </div>
+        <div class="cat-card" onclick="filterAndGo('Nonprofit')">
+          <div class="cat-icon"><i class="fa-solid fa-hand-holding-heart" style="color: #00696F"></i></div>
+          <h4>Nonprofit & Social</h4><span>19 opportunities</span>
+        </div>
+        <div class="cat-card" onclick="filterAndGo('Logistics')">
+          <div class="cat-icon"><i class="fa-solid fa-ship" style="color: #00696F"></i></div>
+          <h4>Logistics & Trade</h4><span>15 opportunities</span>
+        </div>
+        <div class="cat-card" onclick="filterAndGo('Media')">
+          <div class="cat-icon"><i class="fa-solid fa-satellite-dish" style="color: #00696F"></i></div>
+          <h4>Media & Arts</h4><span>12 opportunities</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Featured</div>
+    <div class="section-title">Opportunities This Week</div>
+    <div class="listings-grid" id="home-listings"></div>
+    <div style="text-align:center; margin-top: 28px;">
+      <button class="btn-primary" onclick="showPage('opportunities')">View All Opportunities →</button>
+    </div>
+  </div>
+
+</div><!-- /home -->
+
+
+<!-- ═══════════════════════════════════════
+     OPPORTUNITIES BOARD
+════════════════════════════════════════ -->
+<div id="page-opportunities" class="page">
+
+  <div class="board-header">
+    <h1>Find Opportunities</h1>
+    <p>Internships, co-ops, and experiential learning programs across Northeast Florida</p>
+    <div class="board-search-row">
+      <i class="fa-solid fa-magnifying-glass search-icon"></i>
+      <input type="text" placeholder="Search by role, employer, or keyword…" id="board-search-input" autocomplete="off" oninput="renderOpportunities(); showSuggestions('board')" onfocus="showSuggestions('board')" onkeydown="searchKeydown(event,'board')" />
+      <button onclick="renderOpportunities()">Search</button>
+      <div class="search-suggest" id="board-suggest"></div>
+    </div>
+  </div>
+
+  <div class="board-layout">
+    <!-- Filters -->
+    <div class="filter-panel">
+      <div class="filter-card">
+        <div class="filter-title">Student Level</div>
+        <div class="filter-option"><input type="checkbox" id="f-hs" checked onchange="renderOpportunities()"><label for="f-hs">High School (11–12)</label><span class="filter-count">42</span></div>
+        <div class="filter-option"><input type="checkbox" id="f-col" checked onchange="renderOpportunities()"><label for="f-col">College / University</label><span class="filter-count">89</span></div>
+        <div class="filter-option"><input type="checkbox" id="f-both" checked onchange="renderOpportunities()"><label for="f-both">All Students</label><span class="filter-count">71</span></div>
+      </div>
+      <div class="filter-card">
+        <div class="filter-title">Opportunity Type</div>
+        <div class="filter-option"><input type="checkbox" id="f-intern" checked onchange="renderOpportunities()"><label for="f-intern">Internship</label></div>
+        <div class="filter-option"><input type="checkbox" id="f-shadow" checked onchange="renderOpportunities()"><label for="f-shadow">Job Shadow</label></div>
+        <div class="filter-option"><input type="checkbox" id="f-coop" checked onchange="renderOpportunities()"><label for="f-coop">Co-op</label></div>
+        <div class="filter-option"><input type="checkbox" id="f-fellow" checked onchange="renderOpportunities()"><label for="f-fellow">Fellowship</label></div>
+      </div>
+      <div class="filter-card">
+        <div class="filter-title">Industry</div>
+        <div class="filter-option"><input type="checkbox" id="fi-health" onchange="renderOpportunities()"><label for="fi-health">Healthcare</label></div>
+        <div class="filter-option"><input type="checkbox" id="fi-tech" onchange="renderOpportunities()"><label for="fi-tech">Technology</label></div>
+        <div class="filter-option"><input type="checkbox" id="fi-fin" onchange="renderOpportunities()"><label for="fi-fin">Finance</label></div>
+        <div class="filter-option"><input type="checkbox" id="fi-gov" onchange="renderOpportunities()"><label for="fi-gov">Government</label></div>
+        <div class="filter-option"><input type="checkbox" id="fi-eng" onchange="renderOpportunities()"><label for="fi-eng">Engineering</label></div>
+        <div class="filter-option"><input type="checkbox" id="fi-non" onchange="renderOpportunities()"><label for="fi-non">Nonprofit</label></div>
+      </div>
+      <div class="filter-card">
+        <div class="filter-title">Compensation</div>
+        <div class="filter-option"><input type="checkbox" id="f-paid" onchange="renderOpportunities()"><label for="f-paid">Paid</label></div>
+        <div class="filter-option"><input type="checkbox" id="f-unpaid" onchange="renderOpportunities()"><label for="f-unpaid">Unpaid / Credit</label></div>
+        <div class="filter-option"><input type="checkbox" id="f-stipend" onchange="renderOpportunities()"><label for="f-stipend">Stipend</label></div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="opp-results">
+      <div class="results-bar">
+        <div class="results-count" id="results-count">Showing all opportunities</div>
+        <select class="results-sort" onchange="renderOpportunities()">
+          <option>Most Recent</option>
+          <option>Deadline: Soonest</option>
+          <option>Alphabetical</option>
+        </select>
+      </div>
+      <div class="opp-grid" id="opp-grid"></div>
+    </div>
+  </div>
+
+</div><!-- /opportunities -->
+
+
+<!-- ═══════════════════════════════════════
+     OPPORTUNITY DETAIL
+════════════════════════════════════════ -->
+<div id="page-detail" class="page">
+  <div class="detail-back">
+    <button class="back-btn" onclick="showPage('opportunities')">← Back to Opportunities</button>
+  </div>
+  <div class="detail-layout">
+    <div class="detail-main" id="detail-main"></div>
+    <div class="detail-sidebar" id="detail-sidebar"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     EMPLOYER MAP
+════════════════════════════════════════ -->
+<div id="page-map" class="page">
+  <div class="map-header">
+    <h1><i class="fa-solid fa-map" style="color:var(--teal);margin-right:10px"></i>Employer Map — Northeast Florida</h1>
+    <p>Click any pin to explore an employer's internship and experiential learning programs</p>
+  </div>
+  <div class="map-layout">
+    <div id="map"></div>
+    <div class="map-sidebar">
+      <div class="map-sidebar-header"><i class="fa-solid fa-location-dot" style="color:var(--teal);margin-right:6px"></i>All Employer Locations</div>
+      <div id="map-employer-list"></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     EXPERIENCEJAX
+════════════════════════════════════════ -->
+<div id="page-experience" class="page">
+  <div class="exp-hero">
+    <div class="exp-hero-content">
+      <h1><i class="fa-solid fa-calendar-star" style="margin-right:12px"></i>Experience<span>Jax</span></h1>
+      <p>Jacksonville has more to offer than internships. Explore free days, live music, art walks, baseball, markets, and community events — curated for interns making the most of their summer in the River City.</p>
+    </div>
+  </div>
+
+  <div style="background:var(--white);padding:20px 32px;border-bottom:1px solid var(--border);">
+    <div class="exp-filter-row" style="margin:0;padding:0;">
+      <button class="exp-filter-btn active" id="exp-filter-all" onclick="filterEvents('All')">All Events</button>
+      <button class="exp-filter-btn" id="exp-filter-Arts &amp; Culture" onclick="filterEvents('Arts &amp; Culture')"><i class="fa-solid fa-palette" style="margin-right:4px"></i>Arts &amp; Culture</button>
+      <button class="exp-filter-btn" id="exp-filter-Sports" onclick="filterEvents('Sports')"><i class="fa-solid fa-baseball" style="margin-right:4px"></i>Sports</button>
+      <button class="exp-filter-btn" id="exp-filter-Food &amp; Market" onclick="filterEvents('Food &amp; Market')"><i class="fa-solid fa-store" style="margin-right:4px"></i>Food &amp; Market</button>
+      <button class="exp-filter-btn" id="exp-filter-Outdoors" onclick="filterEvents('Outdoors')"><i class="fa-solid fa-tree" style="margin-right:4px"></i>Outdoors</button>
+      <button class="exp-filter-btn" id="exp-filter-Free" onclick="filterEvents('Free')"><i class="fa-solid fa-ticket" style="margin-right:4px"></i>Free Entry</button>
+    </div>
+  </div>
+
+  <div style="max-width:1200px;margin:0 auto;padding:28px 32px 8px;">
+    <p id="exp-count" style="font-size:0.92rem;color:var(--gray);"></p>
+  </div>
+  <div class="exp-grid" id="exp-grid"></div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     CONNECTJAX
+════════════════════════════════════════ -->
+<div id="page-connect" class="page">
+  <div class="connect-hero">
+    <div class="connect-hero-content">
+      <h1><i class="fa-solid fa-users" style="margin-right:12px"></i>Connect<span>Jax</span></h1>
+      <p>You're not just interning — you're building your network. Meet fellow interns across Jacksonville, see who's working where, share interests, and grow together as young professionals in the River City.</p>
+    </div>
+  </div>
+
+  <div class="connect-toolbar">
+    <div class="connect-search-wrap">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input class="connect-search" id="connect-search" type="text" placeholder="Search by name, company, or interest…" oninput="renderConnectJax()" />
+    </div>
+    <select class="connect-filter-select" id="connect-company-filter" onchange="renderConnectJax()">
+      <option value="">All Companies</option>
+      <option>Mayo Clinic Florida</option>
+      <option>Fidelity Investments</option>
+      <option>JEA</option>
+      <option>City of Jacksonville</option>
+      <option>Nemours Children's Health</option>
+      <option>CSX Transportation</option>
+      <option>VyStar Credit Union</option>
+      <option>UF Health Jacksonville</option>
+      <option>Black Knight</option>
+      <option>JAXPORT</option>
+      <option>Jacksonville Public Library</option>
+      <option>Miller Electric Company</option>
+      <option>Duval County Public Schools</option>
+    </select>
+    <select class="connect-filter-select" id="connect-type-filter" onchange="renderConnectJax()">
+      <option value="">High School &amp; College</option>
+      <option value="High School">High School</option>
+      <option value="College">College</option>
+    </select>
+  </div>
+
+  <div style="max-width:1200px;margin:0 auto;padding:24px 32px 6px;display:flex;align-items:center;justify-content:space-between;">
+    <p id="connect-count" style="font-size:0.92rem;color:var(--gray);"></p>
+  </div>
+  <div class="intern-grid" id="intern-grid"></div>
+</div>
+
+<!-- Message Modal -->
+<div class="modal-overlay" id="msg-modal" onclick="if(event.target===this)closeMsgModal()">
+  <div class="modal-box">
+    <div id="msg-modal-inner"></div>
+  </div>
+</div>
+
+
+
+<!-- WorkJax scripts — data first, then app logic -->
+<script src="data.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>

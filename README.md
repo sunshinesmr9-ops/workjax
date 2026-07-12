@@ -1,42 +1,80 @@
-# WorkJax
+# WorkJax Documentation Hub
 
-WorkJax is a prototype workforce ecosystem platform connecting students and young adults in Northeast Florida with experiential learning opportunities, employers, local experiences, and peers.
+## Purpose
 
-## Current Status
+This directory is the single source of truth for the WorkJax product and its technical and operational architecture.
 
-WorkJax is currently a static prototype built with HTML, CSS, and JavaScript and deployed through Vercel. The current content is stored in `data.js`.
+It documents both:
 
-The long-term goal is for an ecosystem partner to operate WorkJax as a public platform with automatically updated opportunities and events, shared student profiles, and clear content-governance processes.
+1. **Current state** — what the prototype actually does today.
+2. **Target state** — what must exist for WorkJax to operate as a sustainable public platform.
 
-## Live Prototype
+Proposed functionality must not be described as live functionality.
 
-- Production prototype: https://workjax.vercel.app/
+## Product Definition
 
-## Repository Structure
+WorkJax is intended to support the broader Northeast Florida workforce ecosystem by helping young people:
 
-```text
-workjax/
-├── index.html
-├── styles.css
-├── data.js
-├── app.js
-├── README.md
-└── docs/
-```
+- Find experiential learning opportunities
+- Understand where employers and opportunity sites are located
+- Discover Jacksonville events and recurring community spaces
+- Connect with other young people through external contact channels
 
-## Documentation
+WorkJax is not intended to process opportunity applications or provide direct messaging.
 
-The [`docs/`](docs/README.md) directory is the single source of truth for:
+## Documentation Map
 
-- Product purpose and scope
-- Current and target architecture
-- Feature behavior
-- Data models and relationships
-- Content ingestion and update processes
-- Privacy and safety requirements
-- Governance and ownership decisions
-- Implementation roadmap
+### Architecture
 
-## Documentation Rule
+- [Current State](architecture/current-state.md)
+- [Target State](architecture/target-state.md)
+- [System Context](architecture/system-context.md)
 
-Any pull request that changes a feature, data field, integration, or operating process should update the corresponding Markdown documentation in the same pull request.
+### Features
+
+- [Find Opportunities](features/opportunities.md)
+- [Employer Map](features/employer-map.md)
+- [Experience Jax](features/experience-jax.md)
+- [Connect Jax](features/connect-jax.md)
+
+### Data
+
+- [Target Data Model](data/data-model.md)
+
+### Operations and Governance
+
+- [Content Ingestion](operations/content-ingestion.md)
+- [Privacy and Safety](governance/privacy-and-safety.md)
+- [Open Governance Questions](governance/open-questions.md)
+
+### Roadmap and Decisions
+
+- [Implementation Roadmap](roadmap/implementation-roadmap.md)
+- [ADR-001: Managed Backend and Automated Ingestion](decisions/ADR-001-managed-backend.md)
+
+### Templates
+
+- [Feature Documentation Template](templates/feature-template.md)
+
+## Status Labels
+
+Use these labels consistently:
+
+| Label | Meaning |
+|---|---|
+| `LIVE` | Implemented and usable in the current deployed site |
+| `DEMO ONLY` | Simulated locally and not shared across users |
+| `PROPOSED` | Recommended target-state functionality |
+| `TBD` | Requires a product, technical, legal, or governance decision |
+| `DEPRECATED` | No longer intended for use |
+
+## Documentation Ownership
+
+| Area | Current Owner | Long-Term Owner |
+|---|---|---|
+| Product documentation | Civic Collaboration team | TBD ecosystem operator |
+| Source code | Serena Ray / current repository owner | TBD |
+| Opportunity content | No formal owner | TBD |
+| Event content | No formal owner | TBD |
+| Student profile moderation | No formal owner | TBD |
+| Infrastructure and deployment | Current repository/Vercel owner | TBD |

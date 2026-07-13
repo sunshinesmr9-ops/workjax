@@ -47,6 +47,7 @@ WorkJax is not intended to process opportunity applications or provide direct me
 ### Integrations
 
 - [API Evaluation](integrations/api-evaluation.md)
+- [Dun & Bradstreet Lever Postings Proof of Concept](integrations/dnb-lever-poc.md)
 
 ### Operations and Governance
 
@@ -59,6 +60,7 @@ WorkJax is not intended to process opportunity applications or provide direct me
 - [Implementation Roadmap](roadmap/implementation-roadmap.md)
 - [ADR-001: Managed Backend and Automated Ingestion](decisions/ADR-001-managed-backend.md)
 - [ADR-002: Ticketmaster Discovery API Event Proof of Concept](decisions/ADR-002-ticketmaster-event-poc.md)
+- [ADR-003: Dun & Bradstreet Lever Postings Job Proof of Concept](decisions/ADR-003-dnb-lever-job-poc.md)
 
 ### Templates
 

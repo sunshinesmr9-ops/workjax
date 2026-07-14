@@ -25,7 +25,20 @@ const STATE_MARKER_END = "-->";
 // employer). See the "iCIMS public-portal adapter" section below.
 const ICIMS_MAX_PAGES = 5;
 const ICIMS_MAX_BLOCK_CHARS = 4000;
-const ICIMS_MAX_HTML_BYTES = 2_000_000;
+// Finite, streamed cap — not a truncation-immune read, but bounded and safe.
+// Raised from 2MB; a real search-results page is normally tens-to-hundreds
+// of KB, so this is headroom, not a fix for a specific observed truncation.
+const ICIMS_MAX_HTML_BYTES = 5_000_000;
+
+// Four possible outcomes of checking one iCIMS public-portal page, so that a
+// parser/detection failure is never collapsed into the same "healthy" result
+// as a genuinely empty search. See checkIcimsPublicPortalSource().
+const ICIMS_PARSE_STATUS = {
+  HEALTHY_WITH_RECORDS: "healthy_with_records",
+  HEALTHY_EMPTY: "healthy_empty",
+  PARSER_WARNING: "parser_warning",
+  REQUEST_FAILURE: "request_failure",
+};
 
 const REQUIRED_SOURCE_FIELDS = [
   "sourceId",
@@ -298,16 +311,34 @@ function isAllowedIcimsHostname(hostname) {
   return normalized === "icims.com" || normalized.endsWith(".icims.com");
 }
 
-function looksLikeIcimsPage(html) {
-  return typeof html === "string" && html.toLowerCase().includes("icims");
-}
+// Recognizable job-search-results structure: iCIMS_Job*-prefixed class
+// names, data-job-id/data-jobid attributes (both used by iCIMS across its
+// portal skins to tag job rows for client-side scripting), or an "N of M
+// jobs/results" count phrase. Used to tell "this is a results page but
+// nothing could be parsed" (parser_warning) apart from a page that isn't a
+// results page at all, and from a genuinely empty result.
+const ICIMS_RESULTS_MARKER_PATTERN = /iCIMS_Job|data-job-?id\s*=|class=["'][^"']*\bjobs?[-_]?(table|list|row|result)/i;
+const ICIMS_RESULT_COUNT_PATTERN = /\b\d+\s*(?:-\s*\d+\s*)?of\s*\d+\s*(jobs?|results?|positions?)\b/i;
+
+// Explicit "no results" phrasing only — absence of parsed records alone is
+// never enough to call a source healthy_empty (that was the reported bug).
+const ICIMS_ZERO_RESULTS_PATTERN =
+  /\b(no|0)\s+(jobs?|positions?|openings?|results?)\s*(were\s+)?(found|match(ed)?|available|returned)\b|your search did not match any jobs/i;
+
+// Bot-challenge/interstitial phrasing — treated as a request failure, not a
+// portal page to parse.
+const ICIMS_CHALLENGE_PATTERN = /checking your browser|attention required|cf-browser-verification|access denied|are you a human|captcha/i;
 
 async function readIcimsBodyCapped(response) {
-  if (!response.body) return await response.text();
+  if (!response.body) {
+    const text = await response.text();
+    return { text, bytesRead: Buffer.byteLength(text, "utf8"), capReached: false };
+  }
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let received = 0;
   let text = "";
+  let capReached = false;
   try {
     for (;;) {
       // eslint-disable-next-line no-await-in-loop
@@ -315,7 +346,10 @@ async function readIcimsBodyCapped(response) {
       if (done) break;
       received += value.byteLength;
       text += decoder.decode(value, { stream: true });
-      if (received >= ICIMS_MAX_HTML_BYTES) break;
+      if (received >= ICIMS_MAX_HTML_BYTES) {
+        capReached = true;
+        break;
+      }
     }
   } finally {
     try {
@@ -324,7 +358,7 @@ async function readIcimsBodyCapped(response) {
       // ignore
     }
   }
-  return text;
+  return { text, bytesRead: received, capReached };
 }
 
 async function fetchIcimsHtmlWithTimeout(url) {
@@ -342,8 +376,8 @@ async function fetchIcimsHtmlWithTimeout(url) {
       error.category = "http";
       throw error;
     }
-    const html = await readIcimsBodyCapped(response);
-    return { finalUrl, html };
+    const { text: html, bytesRead, capReached } = await readIcimsBodyCapped(response);
+    return { finalUrl, html, bytesRead, capReached };
   } catch (err) {
     if (err.name === "AbortError") {
       const timeoutError = new Error(`Request timed out after ${REQUEST_TIMEOUT_MS}ms.`);
@@ -357,8 +391,15 @@ async function fetchIcimsHtmlWithTimeout(url) {
   }
 }
 
-// A stable iCIMS convention: public job-detail URLs contain /jobs/<digits>/.../job.
-const ICIMS_JOB_LINK_PATTERN = /<a\b[^>]*href\s*=\s*["']([^"']*\/jobs\/(\d+)\/[^"']*\/job[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
+// A stable iCIMS convention: public job-detail URLs end in <numeric-id>/<slug>/job,
+// e.g. /jobs/12345/electrician/job. A search-results page already living at
+// /jobs/search plausibly emits *relative* anchors (e.g. "12345/electrician/job",
+// no repeated "/jobs/" prefix) that resolve correctly once combined with the
+// page's own URL but never contain the literal substring "/jobs/" — so this
+// pattern matches the <id>/<slug>/job shape regardless of what (if anything)
+// precedes it, rather than requiring a "/jobs/" prefix in the raw href text.
+const ICIMS_JOB_LINK_PATTERN =
+  /<a\b[^>]*\bhref\s*=\s*["']([^"'?#]*?(\d{3,})\/[^"'/?#]+\/job)(?:[?#][^"']*)?["'][^>]*>([\s\S]*?)<\/a>/gi;
 
 const ICIMS_FIELD_LABELS = [
   "Category",
@@ -417,6 +458,7 @@ function parseIcimsJobBlocks(html, pageUrl) {
         jobId: m.jobId,
         title: stripHtml(m.titleHtml),
         jobDetailUrl,
+        company: extractIcimsLabeledField(blockText, "Company"),
         category: extractIcimsLabeledField(blockText, "Category"),
         positionType: extractIcimsLabeledField(blockText, "Position Type"),
         locationType: extractIcimsLabeledField(blockText, "Location Type"),
@@ -455,10 +497,24 @@ function normalizeIcimsUrl(rawUrl) {
   }
 }
 
-// Restricts to records that explicitly identify Miller Electric Company —
-// never a generic EMCOR mention or an unrelated EMCOR subsidiary.
-function isMillerElectricRecord(candidate) {
-  return /miller electric/i.test(candidate.blockText) || /miller electric/i.test(candidate.title);
+// Generic employer-identity match, derived from the registry's own
+// employerName rather than hardcoded to any one employer — this is what lets
+// the same adapter be reused for a future, separately-validated iCIMS source
+// (e.g. Haskell) without editing adapter code. Common corporate suffixes are
+// stripped so "Miller Electric Company" matches "Miller Electric" wherever it
+// appears, and never a generic EMCOR mention or an unrelated EMCOR subsidiary.
+function buildEmployerIdentityPattern(employerName) {
+  const stripped = String(employerName || "")
+    .replace(/\b(company|co\.?|inc\.?|llc|corp\.?|corporation|ltd\.?)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const base = stripped.length > 0 ? stripped : employerName;
+  return new RegExp(escapeRegExp(base), "i");
+}
+
+function isEmployerRecord(candidate, employerPattern) {
+  if (candidate.company && employerPattern.test(candidate.company)) return true;
+  return employerPattern.test(candidate.blockText) || employerPattern.test(candidate.title);
 }
 
 function isIcimsLocationQualifying(candidate, locationKeywords) {
@@ -470,7 +526,7 @@ function isIcimsLocationQualifying(candidate, locationKeywords) {
 // match: an ordinary full-time or "entry-level" listing must never qualify
 // on its own, and high-school eligibility is never inferred. A record only
 // qualifies on an explicit, strong signal.
-function hasStrongMillerStudentSignal(candidate) {
+function hasStrongStudentSignal(candidate) {
   if (candidate.positionType && /\bintern\b/i.test(candidate.positionType)) return true;
   if (candidate.category && /\binternship\b/i.test(candidate.category)) return true;
   if (candidate.title && /\b(intern|internship|co-op|coop|apprentice|apprenticeship)\b/i.test(candidate.title)) return true;
@@ -478,7 +534,7 @@ function hasStrongMillerStudentSignal(candidate) {
   return false;
 }
 
-function describeMillerStrongSignal(candidate) {
+function describeStrongStudentSignal(candidate) {
   if (candidate.positionType && /\bintern\b/i.test(candidate.positionType)) return `position type "${candidate.positionType}"`;
   if (candidate.category && /\binternship\b/i.test(candidate.category)) return `category "${candidate.category}"`;
   if (candidate.title && /\b(intern|internship|co-op|coop|apprentice|apprenticeship)\b/i.test(candidate.title)) {
@@ -489,12 +545,12 @@ function describeMillerStrongSignal(candidate) {
 
 function evaluateIcimsQualification(candidate, source) {
   const locationOk = isIcimsLocationQualifying(candidate, source.locationKeywords);
-  const studentOk = hasStrongMillerStudentSignal(candidate);
+  const studentOk = hasStrongStudentSignal(candidate);
   const reasons = [];
   if (locationOk) {
     reasons.push(`Location match: "${candidate.jobLocation || candidate.locationType || "Jacksonville evidence in listing"}"`);
   }
-  if (studentOk) reasons.push(`Strong student signal: ${describeMillerStrongSignal(candidate)}`);
+  if (studentOk) reasons.push(`Strong student signal: ${describeStrongStudentSignal(candidate)}`);
   return { qualifies: locationOk && studentOk, reasons };
 }
 
@@ -508,16 +564,28 @@ async function checkIcimsPublicPortalSource(source, generatedAt) {
     endpoint: source.endpoint,
     lastCheckedAt: generatedAt,
   };
-  const failure = (error) => ({
+  const employerPattern = buildEmployerIdentityPattern(source.employerName);
+
+  const requestFailure = (error, extra = {}) => ({
     ...base,
     healthy: false,
     error,
+    parseStatus: ICIMS_PARSE_STATUS.REQUEST_FAILURE,
     totalFetched: 0,
     qualifying: [],
-    pagesChecked: 0,
+    pagesChecked: extra.pagesChecked || 0,
     recordsExamined: 0,
-    millerRecordsFound: 0,
-    jacksonvilleMillerRecordsFound: 0,
+    employerRecordsFound: 0,
+    jacksonvilleEmployerRecordsFound: 0,
+    diagnostics: {
+      responseBytesRead: extra.responseBytesRead || 0,
+      responseSizeCapReached: extra.responseSizeCapReached || false,
+      finalUrl: extra.finalUrl || null,
+      finalHostname: extra.finalHostname || null,
+      resultsPageMarkerFound: false,
+      zeroResultsMarkerFound: false,
+      potentialJobLinksFound: 0,
+    },
   });
 
   try {
@@ -526,34 +594,55 @@ async function checkIcimsPublicPortalSource(source, generatedAt) {
     const allCandidates = [];
     let pagesChecked = 0;
     let currentUrl = source.endpoint;
-    let firstPageError = null;
+    let responseBytesRead = 0;
+    let responseSizeCapReached = false;
+    let resultsPageMarkerFound = false;
+    let zeroResultsMarkerFound = false;
+    let potentialJobLinksFound = 0;
+    let lastFinalUrl = null;
+    let hardFailure = null;
 
     for (let page = 0; page < ICIMS_MAX_PAGES; page += 1) {
       let finalUrl;
       let html;
+      let bytesRead;
+      let capReached;
       try {
         // eslint-disable-next-line no-await-in-loop
-        ({ finalUrl, html } = await fetchIcimsHtmlWithTimeout(currentUrl));
+        ({ finalUrl, html, bytesRead, capReached } = await fetchIcimsHtmlWithTimeout(currentUrl));
       } catch (err) {
-        firstPageError = err.message;
+        if (pagesChecked === 0) hardFailure = err.message;
         break;
       }
+
+      lastFinalUrl = finalUrl;
+      responseBytesRead += bytesRead;
+      if (capReached) responseSizeCapReached = true;
 
       if (!isAllowedIcimsHostname(finalUrl.hostname)) {
-        firstPageError = `Final URL hostname "${finalUrl.hostname}" is not an allowed iCIMS career-portal hostname.`;
+        if (pagesChecked === 0) {
+          hardFailure = `Final URL hostname "${finalUrl.hostname}" is not an allowed iCIMS career-portal hostname.`;
+        }
         break;
       }
 
-      if (!looksLikeIcimsPage(html)) {
-        firstPageError =
-          "Portal HTML no longer matches the expected iCIMS structure — flagged for manual review, not treated as zero jobs.";
+      if (ICIMS_CHALLENGE_PATTERN.test(html)) {
+        if (pagesChecked === 0) {
+          hardFailure = "Response appears to be a bot-challenge/verification page, not the iCIMS career portal.";
+        }
         break;
       }
 
       pagesChecked += 1;
       visitedUrls.add(normalizeIcimsUrl(finalUrl.href));
 
+      if (ICIMS_RESULTS_MARKER_PATTERN.test(html) || ICIMS_RESULT_COUNT_PATTERN.test(html)) {
+        resultsPageMarkerFound = true;
+      }
+      if (ICIMS_ZERO_RESULTS_PATTERN.test(html)) zeroResultsMarkerFound = true;
+
       const pageCandidates = parseIcimsJobBlocks(html, finalUrl.href);
+      potentialJobLinksFound += pageCandidates.length;
       for (const candidate of pageCandidates) {
         if (seenJobIds.has(candidate.jobId)) continue;
         seenJobIds.add(candidate.jobId);
@@ -570,17 +659,22 @@ async function checkIcimsPublicPortalSource(source, generatedAt) {
     }
 
     if (pagesChecked === 0) {
-      return failure(firstPageError || "Unable to check the iCIMS public portal.");
+      return requestFailure(hardFailure || "Unable to check the iCIMS public portal.", {
+        responseBytesRead,
+        responseSizeCapReached,
+        finalUrl: lastFinalUrl ? lastFinalUrl.href : null,
+        finalHostname: lastFinalUrl ? lastFinalUrl.hostname : null,
+      });
     }
 
-    const recordsExamined = allCandidates.length;
-    const millerCandidates = allCandidates.filter(isMillerElectricRecord);
-    const millerRecordsFound = millerCandidates.length;
-    const jacksonvilleMillerRecordsFound = millerCandidates.filter((c) =>
+    const recordsParsed = allCandidates.length;
+    const employerCandidates = allCandidates.filter((c) => isEmployerRecord(c, employerPattern));
+    const employerRecordsFound = employerCandidates.length;
+    const jacksonvilleEmployerRecordsFound = employerCandidates.filter((c) =>
       isIcimsLocationQualifying(c, source.locationKeywords)
     ).length;
 
-    const qualifying = millerCandidates
+    const qualifying = employerCandidates
       .map((candidate) => {
         const { qualifies, reasons } = evaluateIcimsQualification(candidate, source);
         return {
@@ -597,19 +691,48 @@ async function checkIcimsPublicPortalSource(source, generatedAt) {
       })
       .filter((candidate) => candidate.qualifies);
 
+    let parseStatus;
+    let healthy;
+    let error;
+    if (recordsParsed > 0) {
+      parseStatus = ICIMS_PARSE_STATUS.HEALTHY_WITH_RECORDS;
+      healthy = true;
+      error = null;
+    } else if (zeroResultsMarkerFound) {
+      parseStatus = ICIMS_PARSE_STATUS.HEALTHY_EMPTY;
+      healthy = true;
+      error = null;
+    } else {
+      parseStatus = ICIMS_PARSE_STATUS.PARSER_WARNING;
+      healthy = false;
+      error = resultsPageMarkerFound
+        ? "Page appears to be an iCIMS job-results page (result markers detected) but zero records could be parsed — flagged for manual review, not treated as zero jobs."
+        : "Portal HTML did not match any recognized iCIMS job-results structure — flagged for manual review, not treated as zero jobs.";
+    }
+
     return {
       ...base,
-      healthy: true,
-      error: null,
-      totalFetched: recordsExamined,
+      healthy,
+      error,
+      parseStatus,
+      totalFetched: recordsParsed,
       qualifying,
       pagesChecked,
-      recordsExamined,
-      millerRecordsFound,
-      jacksonvilleMillerRecordsFound,
+      recordsExamined: recordsParsed,
+      employerRecordsFound,
+      jacksonvilleEmployerRecordsFound,
+      diagnostics: {
+        responseBytesRead,
+        responseSizeCapReached,
+        finalUrl: lastFinalUrl ? lastFinalUrl.href : null,
+        finalHostname: lastFinalUrl ? lastFinalUrl.hostname : null,
+        resultsPageMarkerFound,
+        zeroResultsMarkerFound,
+        potentialJobLinksFound,
+      },
     };
   } catch (err) {
-    return failure(err && err.message ? err.message : "Unexpected error while checking the iCIMS public portal.");
+    return requestFailure(err && err.message ? err.message : "Unexpected error while checking the iCIMS public portal.");
   }
 }
 
@@ -787,10 +910,17 @@ function renderReportMarkdown(report) {
   lines.push(`## Source health summary`);
   for (const result of report.sources) {
     const statusText = result.healthy ? "healthy" : `FAILED — ${result.error}`;
-    lines.push(`- \`${result.sourceId}\` (${result.provider}, ${result.employerName}): ${statusText}`);
+    const statusTag = result.parseStatus ? ` [${result.parseStatus}]` : "";
+    lines.push(`- \`${result.sourceId}\` (${result.provider}, ${result.employerName})${statusTag}: ${statusText}`);
     if (typeof result.pagesChecked === "number") {
       lines.push(
-        `  - Pages checked: ${result.pagesChecked}; visible records examined: ${result.recordsExamined ?? 0}; Miller Electric records found: ${result.millerRecordsFound ?? 0}; Jacksonville Miller records found: ${result.jacksonvilleMillerRecordsFound ?? 0}; qualifying student records: ${result.qualifying.length}`
+        `  - Pages checked: ${result.pagesChecked}; records examined: ${result.recordsExamined ?? 0}; employer records found: ${result.employerRecordsFound ?? 0}; Jacksonville employer records found: ${result.jacksonvilleEmployerRecordsFound ?? 0}; qualifying student records: ${result.qualifying.length}`
+      );
+    }
+    if (result.diagnostics) {
+      const d = result.diagnostics;
+      lines.push(
+        `  - Diagnostics: response bytes read ${d.responseBytesRead}${d.responseSizeCapReached ? " (size cap reached)" : ""}; final hostname \`${d.finalHostname || "n/a"}\`; results-page marker ${d.resultsPageMarkerFound ? "found" : "not found"}; zero-results marker ${d.zeroResultsMarkerFound ? "found" : "not found"}; potential job links ${d.potentialJobLinksFound}`
       );
     }
   }
@@ -854,7 +984,8 @@ function renderReportMarkdown(report) {
     lines.push(`None — every enabled source responded successfully.`);
   } else {
     for (const result of failedSources) {
-      lines.push(`- \`${result.sourceId}\` (${result.employerName}): ${result.error}`);
+      const statusTag = result.parseStatus ? ` [${result.parseStatus}]` : "";
+      lines.push(`- \`${result.sourceId}\` (${result.employerName})${statusTag}: ${result.error}`);
     }
   }
   lines.push("");

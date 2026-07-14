@@ -55,6 +55,8 @@ WorkJax is not intended to process opportunity applications or provide direct me
 ### Operations and Governance
 
 - [Content Ingestion](operations/content-ingestion.md)
+- [Employer Feed Monitoring](operations/employer-feed-monitoring.md)
+- [Monthly ATS Discovery](operations/monthly-ats-discovery.md)
 - [Privacy and Safety](governance/privacy-and-safety.md)
 - [Open Governance Questions](governance/open-questions.md)
 

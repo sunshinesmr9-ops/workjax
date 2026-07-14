@@ -67,6 +67,27 @@ flowchart LR
 - **`PROPOSED`, not built:** an opt-in SMS text-message loop (a possible future "tell me what's happening tonight" concept). No phone number, SMS provider, or backend exists for this today, and none should be implied by any future copy changes without an explicit product/legal decision.
 - **`TBD`:** whether this prototype's content is ever merged into WorkJax's own event data model, who owns verifying its schedule, and what privacy/moderation review would be required before any shared (non-device-local) version of attendance data is introduced. Per this document's Architecture Principles above (minimized personal information, stronger minor protections, named operator before public launch), any future version of this feature must clear the same bar as the rest of the target-state platform — it does not get a lighter review path just because it started as an adapted prototype.
 
+## Accessibility Target State
+
+For WorkJax to operate as a sustainable public platform, the target state includes:
+
+1. A formally designated WorkJax operator.
+2. A formally assigned accessibility owner, accepted in writing by that operator.
+3. WCAG 2.2 Level AA as the design and engineering baseline for all features.
+4. Documented accessibility evaluations against a defined scope, using the structure in `docs/accessibility/wcag-2.2-aa-checklist.md`.
+5. Accessibility testing before major releases.
+6. Accessibility re-testing after significant content or design changes.
+7. A public accessibility-feedback channel.
+8. A defined response and remediation process, tracked in `docs/accessibility/accessibility-audit-log.md`.
+9. Recurring (not one-time) accessibility evaluations.
+10. Inclusion of people with disabilities in testing when feasible.
+11. Review of third-party services and outbound links (employer application pages, event pages, maps, embeds) for accessibility barriers.
+12. Accessibility requirements in procurement standards for future vendors.
+13. Legal-applicability review (ADA Title II/III, Section 504, Section 508, contractual/procurement requirements) performed by the formal operator or qualified counsel — not asserted in this documentation.
+14. A public accessibility statement based on an actual completed assessment, replacing the internal `docs/accessibility/accessibility-statement-draft.md` template only once the prerequisites above are met.
+
+None of the above exists today. See `docs/operations/accessibility.md` for the proposed policy and `docs/README.md` for current ownership status (`UNASSIGNED` for operator, accessibility owner, and remediation owner).
+
 ## Suggested Technical Direction
 
 A practical path is to retain Vercel hosting and add:

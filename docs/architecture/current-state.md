@@ -119,6 +119,16 @@ Opportunity deadlines and event dates are stored as descriptive text. Automatic 
 - `app.js` now has `isOpportunityActive(record)` and `isEventActive(record)` helper functions, used when rendering homepage featured opportunities, opportunity search results, and Experience Jax events. Because every record is unverified, both helpers currently return `true` for everything, so visible counts and behavior are unchanged.
 - The original `deadline`/`duration` (employers) and `date` (events) text fields remain the display source of truth; `deadlineSortKey()`'s existing text-based deadline sort is unchanged.
 
+## Current Accessibility State
+
+WorkJax contains some accessibility-conscious implementation patterns. Examples include semantic nested tabs and keyboard support in the Community Event Platform (see `docs/features/community-event-platform.md`, §6 and §13). Visible focus styles and some ARIA attributes also exist elsewhere in `index.html` and `styles.css`.
+
+These examples have **not** been evaluated as part of a complete, documented WCAG 2.2 Level AA assessment. Their presence does not establish site-wide conformance.
+
+The complete site accessibility status is **`NOT ASSESSED`**. No formal WorkJax operator or accessibility owner is currently assigned (see `docs/README.md` and `docs/operations/accessibility.md`). Current repository maintenance must not be interpreted as formal legal or organizational ownership of accessibility outcomes.
+
+See `docs/operations/accessibility.md`, `docs/accessibility/wcag-2.2-aa-checklist.md`, and `docs/accessibility/accessibility-audit-log.md` for the proposed accessibility standard and governance framework. No accessibility audit has been performed as part of this documentation update.
+
 ## Current Product Areas
 
 ```mermaid

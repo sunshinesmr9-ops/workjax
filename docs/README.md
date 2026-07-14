@@ -68,11 +68,11 @@ WorkJax is not intended to process opportunity applications or provide direct me
 - [Accessibility Policy](operations/accessibility.md)
 - [WCAG 2.2 AA Checklist](accessibility/wcag-2.2-aa-checklist.md)
 - [Accessibility Audit Log](accessibility/accessibility-audit-log.md)
-- [Baseline Accessibility Audit — 2026-07-14](accessibility/baseline-audit-2026-07-14.md) (static source-code review)
-- [Manual Accessibility Test Protocol](accessibility/manual-test-protocol.md) (not yet executed)
+- [Baseline Accessibility Audit — 2026-07-14](accessibility/baseline-audit-2026-07-14.md) (Chrome Lighthouse Navigation audit, Home page only)
+- [Manual Accessibility Test Protocol](accessibility/manual-test-protocol.md) (Minimum Prototype Review — not yet executed)
 - [Accessibility Statement Draft](accessibility/accessibility-statement-draft.md) (internal draft only — not published)
 
-WorkJax targets **WCAG 2.2 Level AA** as a proposed technical standard. The current site-wide accessibility status is **`ASSESSMENT IN PROGRESS`**: a static source-code baseline review was completed 2026-07-14 (see the baseline audit above), but no manual, automated-tool, screen-reader, contrast, zoom/reflow, or mobile touch-target testing has been performed yet. WorkJax must not be described as ADA compliant, fully accessible, or WCAG certified until a documented evaluation has been completed for a defined scope. Some individual pages/policy documents in this repository may still show `NOT ASSESSED` pending a follow-up pass to keep all accessibility documents fully in sync.
+WorkJax targets **WCAG 2.2 Level AA** as a proposed technical standard. The current site-wide accessibility status is **`ASSESSMENT IN PROGRESS`**: two real Chrome Lighthouse Navigation audits (desktop and mobile) of the Home page's default state were run 2026-07-14 (see the baseline audit above), turning up preliminary findings on color contrast, heading order, and (mobile only) a missing main landmark. This is Home-page automated evidence only — it is not a site-wide score, and it does not cover Find Opportunities, Employer Map, Third Spaces, Community Hub, or employer detail pages, since Lighthouse's Navigation mode reloads the site and lands on Home. No manual keyboard, screen-reader, zoom/reflow, or mobile touch-target testing has been performed yet (see the Manual Accessibility Test Protocol above). WorkJax must not be described as ADA compliant, fully accessible, or WCAG certified until a documented evaluation has been completed for a defined scope. Some individual pages/policy documents in this repository may still show `NOT ASSESSED` pending a follow-up pass to keep all accessibility documents fully in sync.
 
 ### Roadmap and Decisions
 

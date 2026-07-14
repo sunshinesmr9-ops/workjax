@@ -17,7 +17,7 @@ WorkJax is currently a static, browser-based prototype. It does not use a fronte
 | `live-opportunity-sources.js` | Browser-visible, frozen registry (`window.LIVE_OPPORTUNITY_SOURCES`) mapping a stable employer ID to a live-opportunity-feed endpoint, provider, and display label. Loaded after `data.js` and before `app.js`. Currently contains two enabled entries, for Dun & Bradstreet and Miller Electric Company. See `docs/integrations/employer-feed-registry.md`. |
 | `app.js` | Page switching, rendering, filtering, saving, RSVP behavior, profiles, map behavior, and the generic `liveOpportunity*` functions that read the registry and render a live-feed section (including the generic `postingKind: "official_program"` card) on a matching employer's detail page |
 | `community-event-data.js` | Frozen, browser-visible dataset (`window.COMMUNITY_EVENT_PLATFORM_DATA`) for the Community Event Platform prototype nested subtab on the Third Spaces page. Adapted from the public `espil77/3rd-Space` repository. Entirely separate from the `events`/`employers` data above — never merged. See `docs/features/community-event-platform.md`. |
-| `community-event-platform.js` | Isolated module exposing `window.CommunityEventPlatform` (`initialize`, `activateSubtab`, `resetToDefaultSubtab`). Renders the Community Event Platform panel, drives its own accessible nested-tab control, its client-clock daypart theming (scoped to that panel only), and its device-local, demo-only "I'll Be There" interaction. Does not call or duplicate `renderEvents()`. |
+| `community-event-platform.js` | Isolated module exposing `window.CommunityEventPlatform` (`initialize` only). Renders the Community Event Platform section — now the first content shown on the Third Spaces page, with Explore Jacksonville directly beneath it on the same continuous page (nested tabs removed 2026-07-14) — drives its client-clock daypart theming plus an accessible manual Morning/Afternoon/Evening theme-preview control and "Use my current time" reset (scoped to `#cep-shell` only), and its device-local, demo-only "I'll Be There" interaction. Does not call or duplicate `renderEvents()`. |
 | Vercel | Static deployment and hosting |
 | Leaflet / map tiles | Interactive employer map |
 | Browser `localStorage` | Device-specific saved opportunities and prototype profile data |
@@ -44,14 +44,14 @@ flowchart LR
 
     E --> I[Search and filters]
     E --> J[Employer map]
-    E --> K[Experience Jax rendering, Explore Jacksonville tab]
+    E --> K[Experience Jax rendering: Community Event Platform, then Explore Jacksonville, one continuous page]
     E --> L[Connect Jax rendering]
     E --> M[Browser localStorage]
     E --> N[Live opportunity feed section, on a matching employer's detail page only]
     N --> R
     E --> CP
     CP --> CT
-    CP --> O[Community Event Platform tab: nested tabs, daypart theming, demo attendance]
+    CP --> O[Community Event Platform: shown first, daypart theming with manual Morning/Afternoon/Evening preview, demo attendance]
 ```
 
 ## Current Data Behavior
@@ -75,7 +75,7 @@ flowchart LR
 | Employer live-opportunity feed registry | `live-opportunity-sources.js` defines a frozen, browser-visible list of employers eligible for a live opportunity feed, matched by stable employer ID. `app.js` only fetches and renders a live feed for an employer with a matching, `enabled: true` registry entry, and only when that employer's existing detail page is opened. Currently two entries are enabled, for Dun & Bradstreet and Miller Electric Company — see `docs/integrations/employer-feed-registry.md` | `LIVE` (registry mechanism; two enabled entries) |
 | Dun & Bradstreet Lever job feed | `api/dnb-lever-jobs.js` returns normalized, Jacksonville-filtered student/early-talent postings from Dun & Bradstreet's public Lever board. Called only from the existing Dun & Bradstreet detail page (`app.js`, `renderLiveOpportunitySection()`, via the employer-feed registry), cached in memory for the browser page session. Not merged into `data.js`, not a citywide job aggregator, and no other employer's page calls it — see `docs/integrations/dnb-lever-poc.md` | `LIVE` (scoped to one employer's detail page) |
 | Miller Electric official internship-program page | `api/miller-internship-program.js` returns one normalized program-level record — application status (`open`/`closed`/`unknown` with supporting evidence), internship areas, paid/eligibility signals only when explicitly stated, and approved official links — read directly from Miller's own internship-program webpage (`mecojax.com`), never from an iCIMS job feed and never individual job requisitions. Called only from the existing Miller Electric Company detail page (`app.js`, `renderLiveOpportunitySection()`, via the employer-feed registry), cached in memory for the browser page session. Independent of the separate weekly iCIMS public-portal monitor — see `docs/integrations/miller-internship-program.md` | `LIVE` (scoped to one employer's detail page) |
-| Community Event Platform prototype | A nested subtab on the Third Spaces page, adapted from the public `espil77/3rd-Space` repository. Its own frozen dataset (`community-event-data.js`), own render/tab/daypart module (`community-event-platform.js`), and a device-local, demo-only "I'll Be There" interaction stored under a WorkJax-prefixed `localStorage` key. All seven schedule records are `verificationStatus: "unverified"`. Never merged into `events`/`employers`. See `docs/features/community-event-platform.md` | `DEMO ONLY` |
+| Community Event Platform prototype | The first section shown on the Third Spaces page (nested tabs removed 2026-07-14 — Explore Jacksonville now renders directly beneath it on the same continuous page), adapted from the public `espil77/3rd-Space` repository. Its own frozen dataset (`community-event-data.js`), own render/daypart module (`community-event-platform.js`), an accessible manual Morning/Afternoon/Evening theme-preview control (session-only override, not stored in `localStorage`), and a device-local, demo-only "I'll Be There" interaction stored under a WorkJax-prefixed `localStorage` key. All seven schedule records are `verificationStatus: "unverified"`. Never merged into `events`/`employers`. See `docs/features/community-event-platform.md` | `DEMO ONLY` |
 
 ## Important Current Limitations
 
@@ -121,11 +121,13 @@ Opportunity deadlines and event dates are stored as descriptive text. Automatic 
 
 ## Current Accessibility State
 
-WorkJax contains some accessibility-conscious implementation patterns. Examples include semantic nested tabs and keyboard support in the Community Event Platform (see `docs/features/community-event-platform.md`, §6 and §13). Visible focus styles and some ARIA attributes also exist elsewhere in `index.html` and `styles.css`.
+WorkJax contains some accessibility-conscious implementation patterns. Examples include native-button keyboard support and non-color selected-state indication in the Community Event Platform's theme-preview controls, and visible focus styles and some ARIA attributes elsewhere in `index.html` and `styles.css` (see `docs/features/community-event-platform.md`, §6, §8, and §13).
 
 These examples have **not** been evaluated as part of a complete, documented WCAG 2.2 Level AA assessment. Their presence does not establish site-wide conformance.
 
 The complete site accessibility status is **`NOT ASSESSED`**. No formal WorkJax operator or accessibility owner is currently assigned (see `docs/README.md` and `docs/operations/accessibility.md`). Current repository maintenance must not be interpreted as formal legal or organizational ownership of accessibility outcomes.
+
+**2026-07-14 update:** The Third Spaces page was restructured from a nested-tab interface into one continuous page (Community Event Platform first, Explore Jacksonville directly beneath it), with a new accessible theme-preview control added. This is a material interface change. It is not described as accessibility verified or WCAG conformant, and the paused baseline accessibility audit (`docs/accessibility/baseline-audit-2026-07-14.md`) was intentionally **not** modified or completed as part of this change — some of its findings (BASE-016/BASE-017, describing the now-removed `role="tablist"`/`role="tab"` markup) no longer describe the current page and will need to be revisited in a future accessibility-focused pass. Keyboard, focus, contrast (across all three themes), zoom, reflow, screen-reader, and mobile touch-target testing of the revised page remain required before any accessibility-verified claim can be made.
 
 See `docs/operations/accessibility.md`, `docs/accessibility/wcag-2.2-aa-checklist.md`, and `docs/accessibility/accessibility-audit-log.md` for the proposed accessibility standard and governance framework. No accessibility audit has been performed as part of this documentation update.
 

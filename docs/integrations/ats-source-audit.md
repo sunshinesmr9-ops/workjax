@@ -4,7 +4,9 @@
 **Scope:** All 38 employer records currently in the `employers` array in `data.js`. No employer outside the existing WorkJax dataset was added or evaluated.
 **Research date:** 2026-07-14
 **Author:** Claude (documentation task)
-**Related:** `docs/integrations/employer-feed-registry.md`, `docs/integrations/dnb-lever-poc.md`, `docs/integrations/api-evaluation.md`, `docs/operations/content-ingestion.md`
+**Related:** `docs/integrations/employer-feed-registry.md`, `docs/integrations/dnb-lever-poc.md`, `docs/integrations/api-evaluation.md`, `docs/operations/content-ingestion.md`, `docs/operations/monthly-ats-discovery.md`
+
+**Follow-up automation now exists (`LIVE`):** `docs/operations/monthly-ats-discovery.md` describes a GitHub Actions workflow that monthly re-checks each of the 38 employers' official careers pages for evidence their ATS platform changed, using the findings in this document as its baseline (`monitoring/ats-research-candidates.json`). It only produces "observed" evidence in an internal GitHub issue — it does not re-run this manual audit's research methodology, does not update this document automatically, and does not add or modify any entry in `monitoring/employer-feed-watch.json` or `live-opportunity-sources.js`.
 
 ---
 
@@ -263,3 +265,4 @@ Following the same pattern already used for Dun & Bradstreet (`docs/integrations
 | 2026-07-14 | Initial ATS source audit of all 38 `data.js` employer records, created from official-source research (constrained to `WebSearch` only, due to a total `WebFetch` block this session); identified Fanatics (Greenhouse) as the sole confirmed public-API candidate for a second live-opportunity feed, with UF Health Jacksonville (iCIMS) as a conditional backup pending an access-model check | Claude (documentation task) |
 | 2026-07-14 | Updated Fanatics' status to "Validated platform; currently no qualifying Jacksonville student posting" following an independent live review of the `fanaticsinc` Greenhouse board (25 jobs, 2 Jacksonville-located, neither student-relevant); decision set to `HOLD` — see `docs/integrations/fanatics-greenhouse-validation.md`. Fanatics remains the priority technical candidate; no endpoint or registry entry was implemented | Claude (documentation task) |
 | 2026-07-14 | Relabeled Fanatics' status to "technically compatible, monitored, not yet published, currently awaiting a qualifying Jacksonville student posting" now that both Greenhouse boards are rechecked weekly by `docs/operations/employer-feed-monitoring.md`. No change to any employer record, endpoint, or registry entry — monitoring does not publish Fanatics to the WorkJax UI | Claude (implementation task) |
+| 2026-07-14 | Noted that a monthly ATS discovery process (`docs/operations/monthly-ats-discovery.md`) now exists as automated follow-up to this audit's findings — it re-checks careers pages for platform-change evidence but does not alter this document's research or any employer record | Claude (implementation task) |

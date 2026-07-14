@@ -1,6 +1,6 @@
 # Dun & Bradstreet Lever Postings Proof of Concept
 
-**Status:** `LIVE`, scoped to a single employer's detail page. The endpoint is called from `app.js` only when the existing Dun & Bradstreet employer detail page (`data.js` `id: 41`) is opened — no other employer's page calls it, and no new employer card or record was added. See "UI integration" below.
+**Status:** `LIVE`, scoped to a single employer's detail page. The endpoint is called from `app.js`, via the employer-feed registry (`live-opportunity-sources.js`, `docs/integrations/employer-feed-registry.md`), only when the existing Dun & Bradstreet employer detail page (`data.js` `id: 41`) is opened — no other employer's page calls it, and no new employer card or record was added. See "UI integration" below.
 **Endpoint:** `api/dnb-lever-jobs.js`
 **Related decision:** `docs/decisions/ADR-003-dnb-lever-job-poc.md`
 **Related research:** `docs/integrations/api-evaluation.md` (Section 5.9, Section 11)
@@ -127,14 +127,16 @@ Every returned posting is normalized into:
 
 ## UI integration
 
-The endpoint is now connected to exactly one place in the WorkJax interface: the existing Dun & Bradstreet employer detail page (`data.js` `id: 41`, unmodified). Opening that detail page (`showDetail(41)` in `app.js`) renders a new **"Current opportunities from Dun & Bradstreet"** section beneath the curated program details and calls `GET /api/dnb-lever-jobs` at that moment — not before, and not for any other employer.
+The endpoint is connected to exactly one place in the WorkJax interface: the existing Dun & Bradstreet employer detail page (`data.js` `id: 41`, unmodified). Since this refactor, that connection runs through a generic employer-feed registry (`live-opportunity-sources.js`, documented in `docs/integrations/employer-feed-registry.md`) instead of a Dun & Bradstreet-specific code path — Dun & Bradstreet's actual behavior, endpoint, and response handling are unchanged.
+
+Opening that detail page (`showDetail(41)` in `app.js`) looks up `getLiveOpportunitySource(employer)`, finds Dun & Bradstreet's enabled registry entry (`employerId: 41`, `endpoint: "/api/dnb-lever-jobs"`), renders a **"Current opportunities from Dun & Bradstreet"** section into a generic container (`live-opportunities-41`) beneath the curated program details, and calls `GET /api/dnb-lever-jobs` at that moment — not before, and not for any other employer.
 
 - **Separation by `postingKind`:** `open_opportunity` results render as current opportunities with an "Apply Officially" link; `talent_network` results render in a distinct, clearly labeled "Talent Network" group with explicit text that joining is not a currently open job, and a "Join Talent Network" link instead.
 - **Fields shown:** title, opportunity type, location, workplace type, commitment, salary (only when `salaryRange` is present), last verified date, and the official external `applicationUrl` — nothing is displayed for a field the response doesn't provide.
 - **Loading / empty / error states:** a loading message appears immediately; an empty result set says no current matching opportunities were found (the curated "Apply Directly at Dun & Bradstreet" careers link stays visible regardless); any upstream failure replaces only this section with a small "temporarily unavailable" message, leaving the rest of the curated detail page (hero, requirements, programs, sidebar) fully visible and unaffected.
-- **Caching:** a successful response is cached in memory for the rest of the browser page session, so reopening the detail page does not repeat the network call. A failed request is not cached and will retry on the next open.
+- **Caching:** a successful response is cached in memory (in the generic `liveOpportunityCache` Map, keyed by endpoint) for the rest of the browser page session, so reopening the detail page does not repeat the network call. A failed request is not cached and will retry on the next open. Concurrent opens are deduplicated via the generic `liveOpportunityRequests` Map.
 - **No duplicate employer card:** this only augments the existing detail page's content; no new record was added to the `employers` array and no additional Dun & Bradstreet card appears in the directory, search, home page, or map.
-- Full behavior, visual components, and rationale are documented in `docs/features/opportunities.md` under "Dun & Bradstreet Live Opportunities Section."
+- Full generic behavior, visual components, and rationale are documented in `docs/integrations/employer-feed-registry.md` and `docs/features/opportunities.md` under "Live Employer Opportunity Feed."
 
 ## What this proof of concept is not
 
@@ -151,3 +153,4 @@ The endpoint is now connected to exactly one place in the WorkJax interface: the
 | 2026-07-13 | Documented the Dun & Bradstreet Lever Postings API endpoint-only proof of concept | Claude (implementation task) |
 | 2026-07-13 | Corrected the claim that Dun & Bradstreet's presence in WorkJax's employer dataset was undecided (it already exists as `data.js` `id: 41`); added the `postingKind` field distinguishing an open opportunity from a talent-network posting, the `commitment` prefix-match behavior for `"Intern: Full Time"`/`"Intern: Part Time"`, and explicit documentation that the current Jacksonville result is a talent network, not a confirmed open internship | Claude (implementation task) |
 | 2026-07-13 | Connected the endpoint to the existing Dun & Bradstreet detail page only (`app.js`), added the "Current opportunities from Dun & Bradstreet" section with open-opportunity/talent-network separation, loading/empty/error states, and page-session caching; updated status from `DEMO ONLY` to `LIVE` (scoped to this one employer's detail page) | Claude (implementation task) |
+| 2026-07-14 | Refactored the D&B-specific frontend code in `app.js` into a generic, registry-driven employer live-opportunity feed (`live-opportunity-sources.js`, `docs/integrations/employer-feed-registry.md`). Dun & Bradstreet's endpoint, filtering, response shape, caching, and rendered behavior are unchanged; it is now the registry's one enabled entry, matched by employer ID 41 rather than by name | Claude (implementation task) |

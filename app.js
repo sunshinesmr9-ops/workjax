@@ -541,6 +541,8 @@ function showDetail(id) {
   const e = employers.find(x => x.id === id);
   if (!e) return;
 
+  const liveSource = getLiveOpportunitySource(e);
+
   document.getElementById('detail-main').innerHTML = `
     <div class="detail-hero">
       <div class="detail-logo-row">
@@ -569,7 +571,7 @@ function showDetail(id) {
         <ul>${e.programs.map(p => `<li>${p}</li>`).join('')}</ul>
       </div>` : ''}
 
-      ${e.name === DNB_EMPLOYER_NAME ? dnbLeverSectionHTML() : ''}
+      ${liveSource ? liveOpportunitySectionHTML(e, liveSource) : ''}
     </div>
 
   `;
@@ -601,8 +603,8 @@ function showDetail(id) {
     </div>
   `;
 
-  if (e.name === DNB_EMPLOYER_NAME) {
-    loadDnbLeverJobsSection();
+  if (liveSource) {
+    renderLiveOpportunitySection(e, liveSource);
   }
 
   showPage('detail');
@@ -610,20 +612,24 @@ function showDetail(id) {
 
 
 /* ════════════════════════════════════
-   DUN & BRADSTREET LIVE LEVER FEED
-   Endpoint-only proof of concept (docs/integrations/dnb-lever-poc.md).
-   GET /api/dnb-lever-jobs is called only when the existing Dun & Bradstreet
-   detail page is opened — never on load, never for any other employer.
-   A successful response is cached for the rest of this browser page
-   session so reopening the detail page does not re-fetch. This does not
-   add a new employer record or card; it only augments the existing
-   Dun & Bradstreet detail page.
+   LIVE EMPLOYER OPPORTUNITY FEEDS
+   Reusable frontend for the employer-feed registry
+   (live-opportunity-sources.js, docs/integrations/employer-feed-registry.md).
+   A live feed is fetched only when an enabled registry entry matches the
+   employer being viewed, and only when that employer's existing detail
+   page is opened — never on load, never for any other employer, never
+   while rendering the directory, homepage, or map. A successful response
+   is cached for the rest of this browser page session so reopening the
+   same detail page does not re-fetch. This does not add a new employer
+   record or card; it only augments an existing, curated detail page.
 ═══════════════════════════════════ */
-const DNB_EMPLOYER_NAME = 'Dun & Bradstreet';
-const DNB_LEVER_ENDPOINT = '/api/dnb-lever-jobs';
+const liveOpportunityCache = new Map();    // endpoint -> successful { source, employer, generatedAt, count, jobs } payload
+const liveOpportunityRequests = new Map(); // endpoint -> in-flight fetch promise, dedupes concurrent opens
 
-let dnbLeverJobsCache = null;   // successful { source, employer, generatedAt, count, jobs } payload
-let dnbLeverJobsRequest = null; // in-flight fetch promise, dedupes concurrent opens
+function getLiveOpportunitySource(employer) {
+  const registry = Array.isArray(window.LIVE_OPPORTUNITY_SOURCES) ? window.LIVE_OPPORTUNITY_SOURCES : [];
+  return registry.find(entry => entry.employerId === employer.id && entry.enabled === true) || null;
+}
 
 function escapeHtml(value) {
   if (value == null) return '';
@@ -635,24 +641,26 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-function fetchDnbLeverJobs() {
-  if (dnbLeverJobsCache) {
-    return Promise.resolve({ ok: true, payload: dnbLeverJobsCache });
+function fetchLiveOpportunities(source) {
+  const key = source.endpoint;
+  if (liveOpportunityCache.has(key)) {
+    return Promise.resolve({ ok: true, payload: liveOpportunityCache.get(key) });
   }
-  if (!dnbLeverJobsRequest) {
-    dnbLeverJobsRequest = fetch(DNB_LEVER_ENDPOINT)
+  if (!liveOpportunityRequests.has(key)) {
+    const request = fetch(source.endpoint)
       .then(res => {
-        if (!res.ok) throw new Error('dnb-lever-jobs request failed');
+        if (!res.ok) throw new Error('live opportunity feed request failed');
         return res.json();
       })
       .then(payload => {
-        dnbLeverJobsCache = payload; // only a successful response is cached
+        liveOpportunityCache.set(key, payload); // only a successful response is cached
         return { ok: true, payload };
       })
       .catch(() => ({ ok: false, payload: null }))
-      .finally(() => { dnbLeverJobsRequest = null; });
+      .finally(() => { liveOpportunityRequests.delete(key); });
+    liveOpportunityRequests.set(key, request);
   }
-  return dnbLeverJobsRequest;
+  return liveOpportunityRequests.get(key);
 }
 
 function formatSalaryRange(range) {
@@ -667,28 +675,28 @@ function formatSalaryRange(range) {
   return `${currency} ${(min != null ? min : max).toLocaleString()}`.trim();
 }
 
-function dnbLeverLoadingHTML() {
-  return `<div class="prototype-note dnb-live-status">
+function liveOpportunityLoadingHTML(employer, source) {
+  return `<div class="prototype-note live-opp-status">
     <i class="fa-solid fa-spinner fa-spin"></i>
-    <span>Checking for current opportunities from Dun &amp; Bradstreet…</span>
+    <span>Checking for current opportunities from ${escapeHtml(employer.name)}…</span>
   </div>`;
 }
 
-function dnbLeverErrorHTML() {
-  return `<div class="prototype-note dnb-live-status dnb-live-status-error">
+function liveOpportunityErrorHTML(employer, source) {
+  return `<div class="prototype-note live-opp-status live-opp-status-error">
     <i class="fa-solid fa-triangle-exclamation"></i>
-    <span>Live opportunities from Dun &amp; Bradstreet are temporarily unavailable. The program details above reflect WorkJax's curated information.</span>
+    <span>Live opportunities from ${escapeHtml(employer.name)} are temporarily unavailable. The program details above reflect WorkJax's curated information.</span>
   </div>`;
 }
 
-function dnbLeverEmptyHTML() {
-  return `<div class="prototype-note dnb-live-status">
+function liveOpportunityEmptyHTML(employer, source) {
+  return `<div class="prototype-note live-opp-status">
     <i class="fa-solid fa-circle-info"></i>
-    <span>No current matching opportunities were found on Dun &amp; Bradstreet's official careers feed right now. Use the "Apply Directly at Dun &amp; Bradstreet" link for their full careers site.</span>
+    <span>No current matching opportunities were found on ${escapeHtml(employer.name)}'s official careers feed right now. Use the "Apply Directly at ${escapeHtml(employer.name)}" link for their full careers site.</span>
   </div>`;
 }
 
-function dnbJobCardHTML(job) {
+function liveOpportunityCardHTML(job, employer, source) {
   const isNetwork = job.postingKind === 'talent_network';
   const lastVerified = job.lastVerifiedAt ? new Date(job.lastVerifiedAt).toLocaleDateString() : null;
   const salaryText = formatSalaryRange(job.salaryRange);
@@ -705,60 +713,62 @@ function dnbJobCardHTML(job) {
   ].filter(Boolean).join('');
 
   return `
-  <div class="dnb-live-card ${isNetwork ? 'dnb-live-card-network' : ''}">
-    <div class="dnb-live-card-top">
-      <span class="dnb-live-badge"><i class="fa-solid fa-satellite-dish"></i> Live from employer</span>
-      ${isNetwork ? '<span class="dnb-live-network-tag">Talent Network</span>' : ''}
+  <div class="live-opp-card ${isNetwork ? 'live-opp-card-network' : ''}">
+    <div class="live-opp-card-top">
+      <span class="live-opp-badge"><i class="fa-solid fa-satellite-dish"></i> ${escapeHtml(source.sourceLabel)}</span>
+      ${isNetwork ? '<span class="live-opp-network-tag">Talent Network</span>' : ''}
     </div>
-    <div class="dnb-live-title">${escapeHtml(job.title) || 'Untitled posting'}</div>
-    ${isNetwork ? `<p class="dnb-live-network-note">This is a recruitment-interest network, not a currently open job.</p>` : ''}
-    ${metaItems ? `<div class="dnb-live-meta">${metaItems}</div>` : ''}
-    ${lastVerified ? `<div class="dnb-live-verified">Last verified ${escapeHtml(lastVerified)}</div>` : ''}
-    ${applyHref ? `<a href="${applyHref}" target="_blank" rel="noopener" class="dnb-live-apply">
+    <div class="live-opp-title">${escapeHtml(job.title) || 'Untitled posting'}</div>
+    ${isNetwork ? `<p class="live-opp-network-note">This is a recruitment-interest network, not a currently open job.</p>` : ''}
+    ${metaItems ? `<div class="live-opp-meta">${metaItems}</div>` : ''}
+    ${lastVerified ? `<div class="live-opp-verified">Last verified ${escapeHtml(lastVerified)}</div>` : ''}
+    ${applyHref ? `<a href="${applyHref}" target="_blank" rel="noopener" class="live-opp-apply">
       ${isNetwork ? 'Join Talent Network' : 'Apply Officially'} <i class="fa-solid fa-arrow-up-right-from-square"></i>
     </a>` : ''}
   </div>`;
 }
 
-function dnbLeverResultsHTML(payload) {
+function liveOpportunityResultsHTML(payload, employer, source) {
   const jobs = Array.isArray(payload && payload.jobs) ? payload.jobs : [];
-  if (!jobs.length) return dnbLeverEmptyHTML();
+  if (!jobs.length) return liveOpportunityEmptyHTML(employer, source);
 
   const openJobs = jobs.filter(j => j.postingKind === 'open_opportunity');
   const networkJobs = jobs.filter(j => j.postingKind === 'talent_network');
 
-  if (!openJobs.length && !networkJobs.length) return dnbLeverEmptyHTML();
+  if (!openJobs.length && !networkJobs.length) return liveOpportunityEmptyHTML(employer, source);
 
   let html = '';
   if (openJobs.length) {
-    html += `<div class="dnb-live-group">${openJobs.map(dnbJobCardHTML).join('')}</div>`;
+    html += `<div class="live-opp-group">${openJobs.map(job => liveOpportunityCardHTML(job, employer, source)).join('')}</div>`;
   }
   if (networkJobs.length) {
     html += `
-    <div class="dnb-live-network-group">
+    <div class="live-opp-network-group">
       <h4><i class="fa-solid fa-user-group"></i> Talent Network</h4>
-      <p class="dnb-live-network-group-note">These are recruitment-interest signups, not confirmed open positions.</p>
-      ${networkJobs.map(dnbJobCardHTML).join('')}
+      <p class="live-opp-network-group-note">These are recruitment-interest signups, not confirmed open positions.</p>
+      ${networkJobs.map(job => liveOpportunityCardHTML(job, employer, source)).join('')}
     </div>`;
   }
   return html;
 }
 
-function dnbLeverSectionHTML() {
+function liveOpportunitySectionHTML(employer, source) {
   return `
-  <div class="detail-section dnb-live-section">
-    <h3>Current opportunities from Dun &amp; Bradstreet</h3>
-    <div id="dnb-live-jobs">${dnbLeverLoadingHTML()}</div>
+  <div class="detail-section live-opp-section">
+    <h3>Current opportunities from ${escapeHtml(employer.name)}</h3>
+    <div id="live-opportunities-${employer.id}">${liveOpportunityLoadingHTML(employer, source)}</div>
   </div>`;
 }
 
-async function loadDnbLeverJobsSection() {
-  const result = await fetchDnbLeverJobs();
+async function renderLiveOpportunitySection(employer, source) {
+  const result = await fetchLiveOpportunities(source);
   // The user may have navigated to a different page while the fetch was in
-  // flight; only touch the DOM if this container still exists.
-  const container = document.getElementById('dnb-live-jobs');
+  // flight; only touch the DOM if this employer's container still exists.
+  const container = document.getElementById('live-opportunities-' + employer.id);
   if (!container) return;
-  container.innerHTML = result.ok ? dnbLeverResultsHTML(result.payload) : dnbLeverErrorHTML();
+  container.innerHTML = result.ok
+    ? liveOpportunityResultsHTML(result.payload, employer, source)
+    : liveOpportunityErrorHTML(employer, source);
 }
 
 

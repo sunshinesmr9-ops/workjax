@@ -1,0 +1,3 @@
+The following file was deleted as part of this change (duplicate of docs/data/date-normalization-audit.md, which remains unchanged and canonical):
+
+date-normalization-audit.md

@@ -1,20 +1,27 @@
 /* ════════════════════════════════════
    COMMUNITY EVENT PLATFORM
-   Isolated module for the "Community Event Platform" nested subtab on the
-   Third Spaces page. Reads window.COMMUNITY_EVENT_PLATFORM_DATA
+   Standalone module for the Community Event Platform section of the Third
+   Spaces page. Reads window.COMMUNITY_EVENT_PLATFORM_DATA
    (community-event-data.js). Concept and front-porch UI adapted from the
    public espil77/3rd-Space repository — see
    docs/features/community-event-platform.md for full attribution.
 
    Everything here is isolated from the existing WorkJax `events` array and
    `renderEvents()` in app.js — this module never reads or writes those.
+
+   Initialization requires only the #cep-shell root container and the data
+   object above; it no longer depends on any nested-tab markup.
 ═══════════════════════════════════ */
 window.CommunityEventPlatform = (function () {
   var STORAGE_KEY = 'workjax_cep_interest_v1';
   var DAYPART_REFRESH_MS = 60000;
+  var DAYPART_LABELS = { morning: 'Morning', midday: 'Afternoon', evening: 'Evening' };
 
   var initialized = false;
-  var tabs = []; // [{ name, tabEl, panelEl }]
+  var manualDaypartOverride = null; // null = automatic mode; otherwise 'morning'|'midday'|'evening'
+  var currentDaypart = null;
+  var currentMode = 'auto'; // 'auto' | 'manual'
+  var daypartTimer = null;
 
   function escapeHtml(value) {
     if (value == null) return '';
@@ -32,29 +39,76 @@ window.CommunityEventPlatform = (function () {
   }
 
   /* ---------- Daypart theming (scoped to #cep-shell only, never body) ---------- */
-  function getDaypart() {
+  function getLocalDaypart() {
     var h = new Date().getHours();
     if (h >= 5 && h < 11) return 'morning';
     if (h >= 11 && h < 17) return 'midday';
     return 'evening';
   }
 
-  function applyDaypart(daypart) {
+  function updateThemeControls(daypart) {
+    ['morning', 'midday', 'evening'].forEach(function (d) {
+      var btn = document.getElementById('cep-theme-btn-' + d);
+      if (!btn) return;
+      var isSelected = d === daypart;
+      btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+      btn.classList.toggle('cep-theme-btn--selected', isSelected);
+    });
+  }
+
+  function updateStatusText(daypart, mode) {
+    var statusEl = document.getElementById('cep-theme-status');
+    if (!statusEl) return;
+    var label = DAYPART_LABELS[daypart] || daypart;
+    statusEl.textContent = mode === 'manual'
+      ? ('Previewing ' + label + '.')
+      : ('Using ' + label + ' based on your device time.');
+  }
+
+  function applyDaypart(daypart, mode) {
     var shell = document.getElementById('cep-shell');
     if (!shell) return;
+
+    var changed = (daypart !== currentDaypart) || (mode !== currentMode);
+
     shell.setAttribute('data-daypart', daypart);
     var img = document.getElementById('cep-hero-img');
     if (img) img.src = 'assets/community-event-platform/daypart-' + daypart + '.png';
+
+    currentDaypart = daypart;
+    currentMode = mode;
+
+    updateThemeControls(daypart);
+    if (changed) updateStatusText(daypart, mode);
+  }
+
+  function setManualDaypart(daypart) {
+    manualDaypartOverride = daypart;
+    applyDaypart(daypart, 'manual');
+  }
+
+  function restoreAutomaticDaypart() {
+    manualDaypartOverride = null;
+    applyDaypart(getLocalDaypart(), 'auto');
   }
 
   function startDaypartClock() {
-    applyDaypart(getDaypart());
-    setInterval(function () {
-      var shell = document.getElementById('cep-shell');
-      if (!shell) return;
-      var current = getDaypart();
-      if (shell.getAttribute('data-daypart') !== current) applyDaypart(current);
+    applyDaypart(getLocalDaypart(), 'auto');
+    if (daypartTimer) return;
+    daypartTimer = setInterval(function () {
+      if (manualDaypartOverride) return; // manual preview active — never overwritten by the clock
+      var current = getLocalDaypart();
+      if (current !== currentDaypart) applyDaypart(current, 'auto');
     }, DAYPART_REFRESH_MS);
+  }
+
+  function wireThemeControls() {
+    ['morning', 'midday', 'evening'].forEach(function (d) {
+      var btn = document.getElementById('cep-theme-btn-' + d);
+      if (btn) btn.addEventListener('click', function () { setManualDaypart(d); });
+    });
+    var autoBtn = document.getElementById('cep-auto-theme-btn');
+    if (autoBtn) autoBtn.addEventListener('click', function () { restoreAutomaticDaypart(); });
   }
 
   /* ---------- Demo-only "I'll Be There" attendance (device-local only) ---------- */
@@ -168,71 +222,20 @@ window.CommunityEventPlatform = (function () {
     renderSchedule(data.traditions);
   }
 
-  /* ---------- Nested tabs (accessible tablist pattern) ---------- */
-  function activateSubtab(name) {
-    tabs.forEach(function (t) {
-      var isActive = t.name === name;
-      t.tabEl.setAttribute('aria-selected', isActive ? 'true' : 'false');
-      t.tabEl.tabIndex = isActive ? 0 : -1;
-      t.tabEl.classList.toggle('active', isActive);
-      t.panelEl.hidden = !isActive;
-    });
-  }
-
-  function focusSubtab(name) {
-    var t = tabs.filter(function (x) { return x.name === name; })[0];
-    if (t) t.tabEl.focus();
-  }
-
-  function handleTabKeydown(evt, name) {
-    var idx = tabs.map(function (t) { return t.name; }).indexOf(name);
-    if (idx === -1) return;
-
-    if (evt.key === 'ArrowRight' || evt.key === 'ArrowLeft') {
-      evt.preventDefault();
-      var dir = evt.key === 'ArrowRight' ? 1 : -1;
-      var nextName = tabs[(idx + dir + tabs.length) % tabs.length].name;
-      activateSubtab(nextName);
-      focusSubtab(nextName);
-    } else if (evt.key === 'Enter' || evt.key === ' ' || evt.key === 'Spacebar') {
-      evt.preventDefault();
-      activateSubtab(name);
-    }
-  }
-
-  function resetToDefaultSubtab() {
-    activateSubtab('explore');
-  }
-
   function initialize() {
     if (initialized) return;
 
-    var exploreTab = document.getElementById('exp-tab-explore');
-    var cepTab = document.getElementById('exp-tab-cep');
-    var explorePanel = document.getElementById('exp-panel-explore');
-    var cepPanel = document.getElementById('exp-panel-cep');
-    if (!exploreTab || !cepTab || !explorePanel || !cepPanel) return;
-
-    tabs = [
-      { name: 'explore', tabEl: exploreTab, panelEl: explorePanel },
-      { name: 'cep', tabEl: cepTab, panelEl: cepPanel }
-    ];
-
-    tabs.forEach(function (t) {
-      t.tabEl.addEventListener('click', function () { activateSubtab(t.name); });
-      t.tabEl.addEventListener('keydown', function (evt) { handleTabKeydown(evt, t.name); });
-    });
+    var shell = document.getElementById('cep-shell');
+    if (!shell) return;
 
     renderShell();
+    wireThemeControls();
     startDaypartClock();
-    resetToDefaultSubtab();
 
     initialized = true;
   }
 
   return Object.freeze({
-    initialize: initialize,
-    activateSubtab: activateSubtab,
-    resetToDefaultSubtab: resetToDefaultSubtab
+    initialize: initialize
   });
 })();

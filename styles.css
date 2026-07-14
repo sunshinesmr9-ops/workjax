@@ -1139,8 +1139,9 @@
 
     /* ═══════════════════════════════
        COMMUNITY EVENT PLATFORM
-       Nested subtab on the Third Spaces page. Adapted from the public
-       espil77/3rd-Space front-porch prototype — see
+       Shown first on the Third Spaces page, directly followed by Explore
+       Jacksonville content on the same continuous page (no nested tabs).
+       Adapted from the public espil77/3rd-Space front-porch prototype — see
        docs/features/community-event-platform.md for attribution. Every
        selector here is scoped under .cep-shell; every custom property is
        --cep-prefixed. Nothing here redefines a WorkJax root variable
@@ -1149,20 +1150,6 @@
        .cep-shell, never from document.body, so no other WorkJax page is
        affected by the time-of-day theme.
     ═══════════════════════════════ */
-    .exp-subtabs {
-      display: flex; gap: 8px; flex-wrap: wrap;
-      justify-content: center; max-width: 900px; margin: 24px auto 0;
-      padding: 0 32px;
-    }
-    .exp-subtab {
-      padding: 9px 20px; border-radius: 20px; border: 1.5px solid var(--border);
-      background: var(--white); color: var(--gray); font-size: 0.9rem; font-weight: 700;
-      cursor: pointer; transition: all 0.15s; font-family: var(--font-heading);
-    }
-    .exp-subtab:hover { border-color: var(--teal); color: var(--navy); }
-    .exp-subtab.active { background: var(--navy); color: var(--white); border-color: var(--navy); }
-    .exp-subtab:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
-    .exp-subpanel { padding-top: 8px; }
 
     .cep-shell {
       max-width: 720px; margin: 32px auto 56px; padding: 0 24px;
@@ -1201,6 +1188,41 @@
       font-family: 'Lora', Georgia, serif;
     }
     .cep-verification-notice i { color: var(--cep-accent, var(--teal)); margin-top: 2px; flex-shrink: 0; }
+
+    /* ---------- Theme-preview controls (manual Morning/Afternoon/Evening override) ---------- */
+    .cep-theme-controls {
+      margin: 16px 0 0; padding: 14px 16px;
+      border-radius: 8px; background: var(--cep-card-bg, var(--white));
+      border: 1px solid var(--cep-border-faint, var(--border));
+    }
+    .cep-theme-label {
+      font-family: 'Big Shoulders Display', var(--font-heading), sans-serif;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--cep-ink-faint, var(--gray)); margin: 0 0 10px;
+    }
+    .cep-theme-options { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .cep-theme-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: 20px;
+      border: 1.5px solid var(--cep-border-faint, var(--border));
+      background: transparent; color: var(--cep-ink, var(--text));
+      font-family: var(--font-body); font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .cep-theme-btn:hover { border-color: var(--cep-accent, var(--teal)); }
+    .cep-theme-btn:focus-visible { outline: 2px solid var(--cep-accent, var(--teal)); outline-offset: 2px; }
+    .cep-theme-btn--selected {
+      border-color: var(--cep-accent, var(--teal)); border-width: 2px;
+      font-weight: 800; background: var(--cep-page-bg, var(--light));
+    }
+    .cep-theme-btn--selected::before { content: "\2713"; margin-right: 2px; }
+    .cep-auto-theme-btn {
+      background: none; border: none; padding: 0;
+      font-size: 0.78rem; font-weight: 600; color: var(--cep-accent, var(--teal));
+      text-decoration: underline; cursor: pointer; font-family: var(--font-body);
+    }
+    .cep-auto-theme-btn:focus-visible { outline: 2px solid var(--cep-accent, var(--teal)); outline-offset: 2px; }
+    .cep-theme-status { font-size: 0.8rem; color: var(--cep-ink-soft, var(--gray)); margin: 0; }
 
     .cep-hero {
       display: grid; grid-template-columns: 1fr 1fr;
@@ -1325,6 +1347,21 @@
       font-family: 'Playfair Display', var(--font-heading), Georgia, serif;
       color: var(--cep-ink, var(--text));
     }
+    .cep-footer-link { margin: 10px 0 0 !important; font-style: normal !important; }
+    .cep-footer-link a {
+      font-family: var(--font-body); font-weight: 700; font-size: 0.85rem;
+      color: var(--cep-accent, var(--teal));
+    }
+    .cep-footer-link a:hover { text-decoration: underline; }
+
+    /* Visual break between the Community Event Platform section and Explore
+       Jacksonville below it. Uses the shared --border variable, not a
+       daypart-only --cep- variable, so it reads consistently regardless of
+       the active theme. */
+    .cep-explore-transition {
+      max-width: 1200px; margin: 0 auto; padding: 0 32px;
+      border-top: 2px solid var(--border);
+    }
 
     @media (max-width: 640px) {
       .cep-hero { grid-template-columns: 1fr; }
@@ -1332,7 +1369,9 @@
     }
     @media (max-width: 520px) {
       .cep-shell { padding: 0 16px; }
-      .exp-subtabs { padding: 0 16px; }
+      .cep-theme-options { gap: 6px; }
+      .cep-theme-btn { padding: 7px 12px; font-size: 0.8rem; }
+      .cep-explore-transition { padding: 0 16px; }
     }
 
     @media (max-width: 520px) {

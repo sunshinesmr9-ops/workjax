@@ -560,8 +560,8 @@ const employers = [
     location: "Jacksonville, FL (Southpoint office)",
     description: "Dun & Bradstreet's Jacksonville office runs a structured summer internship program with tracks in Data & Analytics, People Analytics, Environmental/Social/Governance (ESG), and Accounting, working on real business challenges alongside experienced mentors.",
     duration: "Summer, ~10\u201312 weeks",
-    deadline: "Rolling, check dnb.com/careers for current openings",
-    internshipUrl: "https://www.dnb.com/about-us/careers.html",
+    deadline: "Rolling, check jobs.lever.co/dnb for current openings",
+    internshipUrl: "https://jobs.lever.co/dnb",
     requirements: ["Currently enrolled college student", "Interest in data analytics, ESG, or accounting", "Must be eligible to return to school after the internship"],
     programs: ["Data & Analytics Internship", "Accounting Internship", "ESG Internship"],
     applicationTiming: "rolling", applicationOpenAt: null, applicationCloseAt: null, dateVerificationStatus: "unverified"

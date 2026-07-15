@@ -338,7 +338,7 @@ function renderEvents() {
       </div>
       <div class="event-card-footer">
         <span class="event-price ${e.free ? 'free' : ''}">${e.price}</span>
-        <a href="${e.link}" target="_blank" class="event-link">
+        <a href="${e.link}" target="_blank" rel="noopener noreferrer" class="event-link">
           Learn more <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.75rem"></i>
         </a>
       </div>
@@ -447,7 +447,7 @@ function renderConnectJax() {
       <button class="intern-linkedin-btn" onclick="openProfileModal()" style="background:var(--light);color:var(--navy);border:1px solid var(--border);">
         <i class="fa-solid fa-pen"></i> Edit Profile
       </button>` : intern.linkedin ? `
-      <a class="intern-linkedin-btn" href="${intern.linkedin}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
+      <a class="intern-linkedin-btn" href="${intern.linkedin}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">
         <i class="fa-brands fa-linkedin"></i> View LinkedIn
       </a>` : `
       <button class="intern-linkedin-btn disabled" disabled title="No public profile shared">
@@ -799,7 +799,7 @@ function showDetail(id) {
       <div class="info-row"><span class="info-label">Student Level</span><span class="info-val">${e.grade === 'Both' ? 'HS + College' : e.grade}</span></div>
       ${e.internshipUrl ? `
       <hr class="divider">
-      <a href="${e.internshipUrl}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 0;border-radius:8px;background:var(--teal);color:#fff;font-weight:700;font-size:0.88rem;text-decoration:none;margin-top:4px">
+      <a href="${e.internshipUrl}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 0;border-radius:8px;background:var(--teal);color:#fff;font-weight:700;font-size:0.88rem;text-decoration:none;margin-top:4px">
         <i class="fa-solid fa-arrow-up-right-from-square"></i> Apply Directly at ${e.name}
       </a>
       <p style="font-size:0.74rem;color:var(--gray);text-align:center;margin-top:6px">Opens official careers portal</p>` : ''}
@@ -963,7 +963,7 @@ function liveOpportunityProgramCardHTML(job, employer, source) {
     ${metaItems ? `<div class="live-opp-meta">${metaItems}</div>` : ''}
     ${lastVerified ? `<div class="live-opp-verified">Last verified ${escapeHtml(lastVerified)}</div>` : ''}
     ${areasHTML}
-    ${actionHref ? `<a href="${actionHref}" target="_blank" rel="noopener" class="live-opp-apply">
+    ${actionHref ? `<a href="${actionHref}" target="_blank" rel="noopener noreferrer" class="live-opp-apply">
       ${escapeHtml(actionLabel)} <i class="fa-solid fa-arrow-up-right-from-square"></i>
     </a>` : ''}
   </div>`;
@@ -995,7 +995,7 @@ function liveOpportunityCardHTML(job, employer, source) {
     ${isNetwork ? `<p class="live-opp-network-note">This is a recruitment-interest network, not a currently open job.</p>` : ''}
     ${metaItems ? `<div class="live-opp-meta">${metaItems}</div>` : ''}
     ${lastVerified ? `<div class="live-opp-verified">Last verified ${escapeHtml(lastVerified)}</div>` : ''}
-    ${applyHref ? `<a href="${applyHref}" target="_blank" rel="noopener" class="live-opp-apply">
+    ${applyHref ? `<a href="${applyHref}" target="_blank" rel="noopener noreferrer" class="live-opp-apply">
       ${isNetwork ? 'Join Talent Network' : 'Apply Officially'} <i class="fa-solid fa-arrow-up-right-from-square"></i>
     </a>` : ''}
   </div>`;
